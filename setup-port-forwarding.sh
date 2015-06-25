@@ -1,2 +1,5 @@
 #!/bin/bash
-ssh -L localhost:2001:prd-gsm:2001 banele@prd-txtalert-gateway.44st.prk-host.net -t top
+ssh -L localhost:2005:prd-gsm:2005 \
+    -L localhost:2011:prd-gsm:2011 \
+    sdehaan@prd-txtalert-gateway.44st.prk-host.net \
+    -t 

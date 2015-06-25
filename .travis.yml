@@ -1,0 +1,12 @@
+language: python
+python:
+  - 2.7
+  - pypy
+install:
+  - pip install https://github.com/pmarti/python-messaging/tarball/master#egg=python-messaging-dev
+  - pip install coveralls
+  - pip install -e .
+script:
+  - coverage run --source=custard `which trial` custard
+after_success:
+  - coveralls
