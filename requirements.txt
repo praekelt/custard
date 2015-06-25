@@ -1,2 +1,2 @@
 Twisted
-txgsm
+txgsm>=0.1.4
