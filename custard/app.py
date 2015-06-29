@@ -11,6 +11,7 @@ class CommandLineApp(object):
     @inlineCallbacks
     def on_modem_ready(self, configure_response):
         log.msg('Modem is ready!', configure_response)
-        response = yield self.protocol.send_command('AT+CUSD=1,*100#,15', expect='+CUSD')
+        response = yield self.protocol.send_command(
+            'AT+CUSD=1,*100#,15', expect='+CUSD')
         print 'got response!', response
         yield self.protocol.disconnect()
