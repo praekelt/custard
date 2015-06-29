@@ -3,7 +3,7 @@ from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 from twisted.internet.endpoints import TCP4ClientEndpoint
-from protocol_bgm import TxGSMProtocol
+from plyparsing import custardTestInterface
 
 
 class PingProtocol(LineReceiver):
@@ -11,10 +11,12 @@ class PingProtocol(LineReceiver):
 	deffererds = []
 
 	def connectionMade(self):
+		print "Connected"
 		self.setRawMode()
-		pingConsole(self)
+		return pingConsole(self)
 
 	def rawDataReceived(self, data):
+		print "received something"
 		data = data.strip()
 		if data.startswith('+CUSD'):
 			d = self.deffererds.pop(0)
@@ -24,7 +26,7 @@ class PingProtocol(LineReceiver):
 		d = Deferred()
 		self.deffererds.append(d)
 		prefix = self.ColorIt("Dialing: ")
-		display = message + "..."
+		display = message
 		print prefix, display
 		self.sendLine('at+cusd=1,%s,15' % (message))
 		return d
@@ -37,14 +39,14 @@ class PingProtocol(LineReceiver):
 
 class PingFactory(protocol.ClientFactory):
 	def startedConnecting(self, connector):
-		print "Connected"
+		print "Connecting..."
 
 	def buildProtocol(self, addr):
 		f = PingProtocol()
 		return f
 
 	def clientConnectionFailed(self, connector, reason):
-		print "Connection lost"
+		print "Connection failed"
 		reactor.stop()
 
 	def clientConnectionLost(self, connector, reason):
@@ -55,15 +57,17 @@ class PingFactory(protocol.ClientFactory):
 class pingConsole(LineReceiver):
 	facto = None
 	delimiter = '\r\n'
+	cti = None
 
 	def __init__(self, pf):
 		self.facto = pf
-		code = self.prompt("Enter number to dial\n")
-		self.dialNumber(code)
+		self.cti = custardTestInterface(self)
+	#	code = self.prompt("Enter number to dial\n")
+	#	self.dialNumber(code)
 
-	def prompt(self, message):
-		user_input = raw_input(message)
-		return user_input
+	#def prompt(self, message):
+	#	user_input = raw_input(message)
+	#	return user_input
 
 	def dialNumber(self, number):
 		d = self.facto.dial(number)
@@ -72,17 +76,21 @@ class pingConsole(LineReceiver):
 	def showMessage(self, message):
 		cleanResponse = message.lstrip("+CUSD: ")
 		cleanResponse = cleanResponse.replace(self.delimiter,"\n")
-		cleanResponse = cleanResponse[3:-5]
-		msg = self.facto.ColorIt("Server said: ")
-		user_response = self.prompt(msg+cleanResponse)
+		user_response = cleanResponse[3:-5]
+		#msg = self.facto.ColorIt("Server said: ")
+		#user_response = self.prompt(msg+cleanResponse)
 		return user_response
 
 	def handleResponse(self, data):
 		user_response = self.showMessage(data)
-		if user_response == "exit":
-			reactor.callLater(0, reactor.stop)
-		else:
-			self.dialNumber(user_response)
+		self.cti.setResponse(user_response)
+		#if user_response == "exit":
+		#	reactor.callLater(0, reactor.stop)
+		#else:
+		#	self.dialNumber(user_response)
+
+	def shutdown(self):
+		reactor.stop()
 
 reactor.connectTCP("localhost", 2002, PingFactory())
 reactor.run()
