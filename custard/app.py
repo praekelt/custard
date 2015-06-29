@@ -1,4 +1,5 @@
 from twisted.python import log
+from twisted.internet.defer import inlineCallbacks
 
 
 class CommandLineApp(object):
@@ -6,8 +7,10 @@ class CommandLineApp(object):
     def __init__(self, protocol, options):
         self.protocol = protocol
         self.protocol.verbose = options['verbose']
-        self.protocol.ready.addCallback(self.modem_ready)
 
-    def modem_ready(self, protocol):
-        log.msg('Modem is ready!')
-        protocol.disconnect()
+    @inlineCallbacks
+    def on_modem_ready(self, configure_response):
+        log.msg('Modem is ready!', configure_response)
+        response = yield self.protocol.send_command('AT+CUSD=1,*100#,15', expect='+CUSD')
+        print 'got response!', response
+        yield self.protocol.disconnect()

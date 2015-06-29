@@ -6,7 +6,7 @@ from twisted.internet.endpoints import clientFromString
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import usage, log
 
-from custard.service import Options, CustardClientFactory
+from custard.protocol import CustardClientFactory
 from custard.app import CommandLineApp
 
 
@@ -15,8 +15,29 @@ def play(options):
     endpoint = clientFromString(reactor, options['endpoint'])
     protocol = yield endpoint.connect(CustardClientFactory())
     protocol.verbose = options['verbose']
+    protocol.ready.addErrback(log.err)
+    app = CommandLineApp(protocol, options)
+    protocol.ready.addCallback(app.on_modem_ready)
     yield protocol.ready
-    CommandLineApp(protocol, options)
+
+
+class Play(usage.Options):
+
+    optFlags = [
+        ["verbose", "v", "Log AT commands"],
+    ]
+
+    optParameters = [
+        ["script", "s", None, "The script to load."],
+        ["endpoint", "e", None, "The endpoint to connect to."],
+    ]
+
+
+class Options(usage.Options):
+
+    subCommands = [
+        ['play', None, Play, "Play a script"],
+    ]
 
 
 def twisted_cli(_reactor, name, *args):

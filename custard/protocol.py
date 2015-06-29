@@ -1,4 +1,6 @@
 from twisted.internet.defer import Deferred
+from twisted.internet.protocol import ClientFactory
+from twisted.python import log
 
 from txgsm.protocol import TxGSMProtocol
 
@@ -24,8 +26,25 @@ class CustardProtocol(TxGSMProtocol):
 
     def on_modem_configured(self, response):
         self.log('modem is now ready: %r' % (response,))
-        self.ready.callback(self)
+        self.ready.callback(response)
 
     def disconnect(self):
         self.log('Disconnecting...')
         self.transport.loseConnection()
+
+
+class CustardClientFactory(ClientFactory):
+
+    protocol = CustardProtocol
+
+    def buildProtocol(self, addr):
+        p = self.protocol()
+        p.factory = self
+        print 'returning protocol'
+        return p
+
+    def clientConnectionLost(self, connector, reason):
+        log.msg('Client connection lost.')
+
+    def clientConnectionFailed(self, connector, reason):
+        log.msg('Client connection failed.')
