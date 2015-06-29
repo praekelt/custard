@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 import re
 
@@ -15,14 +15,7 @@ setup(
     long_description=open('README.rst', 'r').read(),
     author='Praekelt Foundation',
     author_email='dev@praekelt.com',
-    packages=[
-        "custard",
-        "twisted.plugins",
-    ],
-    package_data={
-        'twisted.plugins': ['twisted/plugins/custard_plugin.py'],
-    },
-    include_package_data=True,
+    packages=find_packages(),
     install_requires=listify('requirements.txt'),
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -34,4 +27,7 @@ setup(
         'Topic :: System :: Networking',
         'Framework :: Twisted',
     ],
+    entry_points={
+        'console_scripts': ['custard = custard.cli:main'],
+    }
 )
