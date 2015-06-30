@@ -13,8 +13,34 @@ class CommandLineApp(object):
         self.load_script(options)
 
     def load_script(self, options):
+        self.script = ""
+        i = 0
         with open(options['script'], 'r') as fp:
-            self.script = fp.read()
+            while True:
+                c = fp.read(1)
+                if not c:
+                    break
+                elif c == '"':
+                    quote = self.load_script_helper(fp)
+                    self.script+=quote
+                    continue
+                self.script += c 
+                i += 1
+
+    def load_script_helper(self, fp):
+        quote = ""
+        while True:
+            c = fp.read(1)
+            if not c:
+                #crash - unclosed qoute
+                break
+            if c == '"':
+                break
+            elif c == '\n':
+                c = ' ';
+            quote += c
+        return quote
+
 
     def on_modem_ready(self, configure_response):
         log.msg('Modem is ready!', configure_response)
@@ -41,10 +67,9 @@ class CommandLineApp(object):
             return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), output)
 
     def handle_response(self, message):
-        rsp = "".join(message['response'])
-        print "message", rsp
+        rsp = " ".join(message['response'])
         cleanResponse = rsp.lstrip('OK+CUSD: ')
-        cleanResponse = cleanResponse.replace(self.delimiter,"\n")
+        #cleanResponse = cleanResponse.replace(self.delimiter,"\n")
         ussd_response = cleanResponse[3:-5]
         self.ussd_resp = ussd_response
         
@@ -57,7 +82,7 @@ class CommandLineApp(object):
         return d
 
     def expect(self, code):
-        code = code[1:-1]
+        #code = code[1:-1]
         if code == self.ussd_resp:
             output = self.ColorIt("PASSED","green")
             print output
