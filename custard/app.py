@@ -4,6 +4,7 @@ import parsley
 
 
 class CommandLineApp(object):
+    delimiter = '\r\n'
     ussd_resp = None
 
     def __init__(self, protocol, options):
@@ -28,7 +29,7 @@ class CommandLineApp(object):
         for line in self.script.split('\n'):
             if line:
                 response = yield self.decryptLine(line)
-                print 'got response!', response
+#                print 'got response!', response
 
     def ColorIt(self, output, color):
             attr = []
@@ -40,24 +41,23 @@ class CommandLineApp(object):
             return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), output)
 
     def handle_response(self, message):
-        print "Popped", '\n'.join(message['response'])
-        cleanResponse = message.lstrip("+CUSD: ")
+        rsp = "".join(message['response'])
+        print "message", rsp
+        cleanResponse = rsp.lstrip('OK+CUSD: ')
         cleanResponse = cleanResponse.replace(self.delimiter,"\n")
         ussd_response = cleanResponse[3:-5]
         self.ussd_resp = ussd_response
+        
         return succeed(ussd_response)
 
     def dial(self, code):
         code = self.convert_to_ussd(code)
         d = self.protocol.send_command(code, expect='+CUSD')
         d.addCallback(self.handle_response)
-        print "response set"
         return d
 
     def expect(self, code):
-#        if self.ussd_resp == None:
-#            print "postponing"
-#            reactor.callLater(2, self.expect(code))
+        code = code[1:-1]
         if code == self.ussd_resp:
             output = self.ColorIt("PASSED","green")
             print output
