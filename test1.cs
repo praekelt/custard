@@ -1,3 +1,14 @@
-DIAL *100#
-EXPECT "Airtime is R37.71; data is 0.00 MB;  0 SMS's; 0 MMS's \n Try the New Vodacom APP, reply 1 for details via SMS"
+DIAL *111#
+EXPECT "1) Balances
+2) Buy
+3) More Power
+4) m-pesa
+5) Promotions
+6) Talking Points
+7) Funeral Cover
+8) USE&GET
+9) Airtime Advance & Transfers
+10) Services
+11) Free n Fun
+"
 END
