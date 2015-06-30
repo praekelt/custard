@@ -1,0 +1,217 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Parsley Tutorial Part II: Parsing Structured Data &mdash; Parsley 1.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Parsley 1.1 documentation" href="index.html" />
+    <link rel="next" title="Parsley Tutorial Part III: Parsing Network Data" href="tutorial3.html" />
+    <link rel="prev" title="Parsley Tutorial Part I: Basics and Syntax" href="tutorial.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="tutorial3.html" title="Parsley Tutorial Part III: Parsing Network Data"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="tutorial.html" title="Parsley Tutorial Part I: Basics and Syntax"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Parsley 1.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="parsley-tutorial-part-ii-parsing-structured-data">
+<h1>Parsley Tutorial Part II: Parsing Structured Data<a class="headerlink" href="#parsley-tutorial-part-ii-parsing-structured-data" title="Permalink to this headline">¶</a></h1>
+<p>Now that you are familiar with the basics of Parsley syntax, let&#8217;s
+look at a more realistic example: a JSON parser.</p>
+<p>The JSON spec on <a class="reference external" href="http://json.org/">http://json.org/</a> describes the format, and we can
+adapt its description to a parser. We&#8217;ll write the Parsley rules in
+the same order as the grammar rules in the right sidebar on the JSON
+site, starting with the top-level rule, &#8216;object&#8217;.</p>
+<div class="highlight-python"><pre>object = ws '{' members:m ws '}' -&gt; dict(m)</pre>
+</div>
+<p>Parsley defines a builtin rule <tt class="docutils literal"><span class="pre">ws</span></tt> which consumes any spaces, tabs,
+or newlines it can.</p>
+<p>Since JSON objects are represented in Python as dicts, and <tt class="docutils literal"><span class="pre">dict</span></tt>
+takes a list of pairs, we need a rule to collect name/value pairs
+inside an object expression.</p>
+<div class="highlight-python"><pre>members = (pair:first (ws ',' pair)*:rest -&gt; [first] + rest)
+          | -&gt; []</pre>
+</div>
+<p>This handles the three cases for object contents: one, multiple, or
+zero pairs. A name/value pair is separated by a colon. We use the
+builtin rule <tt class="docutils literal"><span class="pre">spaces</span></tt> to consume any whitespace after the colon:</p>
+<div class="highlight-python"><pre>pair = ws string:k ws ':' value:v -&gt; (k, v)</pre>
+</div>
+<p>Arrays, similarly, are sequences of array elements, and are
+represented as Python lists.</p>
+<div class="highlight-python"><pre>array = '[' elements:xs ws ']' -&gt; xs
+elements = (value:first (ws ',' value)*:rest -&gt; [first] + rest) | -&gt; []</pre>
+</div>
+<p>Values can be any JSON expression.</p>
+<div class="highlight-python"><pre>value = ws (string | number | object | array
+           | 'true'  -&gt; True
+           | 'false' -&gt; False
+           | 'null'  -&gt; None)</pre>
+</div>
+<p>Strings are sequences of zero or more characters between double
+quotes. Of course, we need to deal with escaped characters as
+well. This rule introduces the operator <tt class="docutils literal"><span class="pre">~</span></tt>, which does negative
+lookahead; if the expression following it succeeds, its parse will
+fail. If the expression fails, the rest of the parse continues. Either
+way, no input will be consumed.</p>
+<div class="highlight-python"><pre>string = '"' (escapedChar | ~'"' anything)*:c '"' -&gt; ''.join(c)</pre>
+</div>
+<p>This is a common pattern, so let&#8217;s examine it step by step. This will
+match leading whitespace and then a double quote character. It then
+matches zero or more characters. If it&#8217;s not an <tt class="docutils literal"><span class="pre">escapedChar</span></tt> (which
+will start with a backslash), we check to see if it&#8217;s a double quote,
+in which case we want to end the loop. If it&#8217;s not a double quote, we
+match it using the rule <tt class="docutils literal"><span class="pre">anything</span></tt>, which accepts a single character
+of any kind, and continue. Finally, we match the ending double quote
+and return the characters in the string. We cannot use the <tt class="docutils literal"><span class="pre">&lt;&gt;</span></tt>
+syntax in this case because we don&#8217;t want a literal slice of the input
+&#8211; we want escape sequences to be replaced with the character they
+represent.</p>
+<p>It&#8217;s very common to use <tt class="docutils literal"><span class="pre">~</span></tt> for &#8220;match until&#8221; situations where you
+want to keep parsing only until an end marker is found. Similarly,
+<tt class="docutils literal"><span class="pre">~~</span></tt> is positive lookahead: it succeed if its expression succeeds
+but not consume any input.</p>
+<p>The <tt class="docutils literal"><span class="pre">escapedChar</span></tt> rule should not be too surprising: we match a
+backslash then whatever escape code is given.</p>
+<div class="highlight-python"><pre>escapedChar = '\\' (('"' -&gt; '"')    |('\\' -&gt; '\\')
+                   |('/' -&gt; '/')    |('b' -&gt; '\b')
+                   |('f' -&gt; '\f')   |('n' -&gt; '\n')
+                   |('r' -&gt; '\r')   |('t' -&gt; '\t')
+                   |('\'' -&gt; '\'')  | escapedUnicode)</pre>
+</div>
+<p>Unicode escapes (of the form <tt class="docutils literal"><span class="pre">\u2603</span></tt>) require matching four hex
+digits, so we use the repetition operator <tt class="docutils literal"><span class="pre">{}</span></tt>, which works like +
+or * except taking either a <tt class="docutils literal"><span class="pre">{min,</span> <span class="pre">max}</span></tt> pair or simply a
+<tt class="docutils literal"><span class="pre">{number}</span></tt> indicating the exact number of repetitions.</p>
+<div class="highlight-python"><pre>hexdigit = :x ?(x in '0123456789abcdefABCDEF') -&gt; x
+escapedUnicode = 'u' &lt;hexdigit{4}&gt;:hs -&gt; unichr(int(hs, 16))</pre>
+</div>
+<p>With strings out of the way, we advance to numbers, both integer and
+floating-point.</p>
+<div class="highlight-python"><pre>number = spaces ('-' | -&gt; ''):sign (intPart:ds (floatPart(sign ds)
+                                               | -&gt; int(sign + ds)))</pre>
+</div>
+<p>Here we vary from the json.org description a little and move sign
+handling up into the <tt class="docutils literal"><span class="pre">number</span></tt> rule. We match either an <tt class="docutils literal"><span class="pre">intPart</span></tt>
+followed by a <tt class="docutils literal"><span class="pre">floatPart</span></tt> or just an <tt class="docutils literal"><span class="pre">intPart</span></tt> by itself.</p>
+<div class="highlight-python"><pre>digit = :x ?(x in '0123456789') -&gt; x
+digits = &lt;digit*&gt;
+digit1_9 = :x ?(x in '123456789') -&gt; x
+
+intPart = (digit1_9:first digits:rest -&gt; first + rest) | digit
+floatPart :sign :ds = &lt;('.' digits exponent?) | exponent&gt;:tail
+                     -&gt; float(sign + ds + tail)
+exponent = ('e' | 'E') ('+' | '-')? digits</pre>
+</div>
+<p>In JSON, multi-digit numbers cannot start with 0 (since that is
+Javascript&#8217;s syntax for octal numbers), so <tt class="docutils literal"><span class="pre">intPart</span></tt> uses <tt class="docutils literal"><span class="pre">digit1_9</span></tt>
+to exclude it in the first position.</p>
+<p>The <tt class="docutils literal"><span class="pre">floatPart</span></tt> rule takes two parameters, <tt class="docutils literal"><span class="pre">sign</span></tt> and <tt class="docutils literal"><span class="pre">ds</span></tt>. Our
+<tt class="docutils literal"><span class="pre">number</span></tt> rule passes values for these when it invokes <tt class="docutils literal"><span class="pre">floatPart</span></tt>,
+letting us avoid duplication of work within the rule. Note that
+pattern matching on arguments to rules works the same as on the string
+input to the parser. In this case, we provide no pattern, just a name:
+<tt class="docutils literal"><span class="pre">:ds</span></tt> is the same as <tt class="docutils literal"><span class="pre">anything:ds</span></tt>.</p>
+<p>(Also note that our float rule cheats a little: it does not really
+parse floating-point numbers, it merely recognizes them and passes
+them to Python&#8217;s <tt class="docutils literal"><span class="pre">float</span></tt> builtin to actually produce the value.)</p>
+<p>The full version of this parser and its test cases can be found in the
+<tt class="docutils literal"><span class="pre">examples</span></tt> directory in the Parsley distribution.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="tutorial.html"
+                        title="previous chapter">Parsley Tutorial Part I: Basics and Syntax</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="tutorial3.html"
+                        title="next chapter">Parsley Tutorial Part III: Parsing Network Data</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/tutorial2.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="tutorial3.html" title="Parsley Tutorial Part III: Parsing Network Data"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="tutorial.html" title="Parsley Tutorial Part I: Basics and Syntax"
+             >previous</a> |</li>
+        <li><a href="index.html">Parsley 1.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Allen Short.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b1.
+    </div>
+  </body>
+</html>
