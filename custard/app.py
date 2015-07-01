@@ -1,6 +1,6 @@
 from twisted.python import log
 from twisted.internet.defer import inlineCallbacks, succeed
-import parsley
+import parsley, time
 
 
 class CommandLineApp(object):
@@ -14,7 +14,6 @@ class CommandLineApp(object):
 
     def load_script(self, options):
         self.script = ""
-        i = 0
         with open(options['script'], 'r') as fp:
             while True:
                 c = fp.read(1)
@@ -25,14 +24,13 @@ class CommandLineApp(object):
                     self.script+=quote
                     continue
                 self.script += c 
-                i += 1
 
     def load_script_helper(self, fp):
+        """reads whats inside the quotation marks and replaces \n characters with spaces"""
         quote = ""
         while True:
             c = fp.read(1)
             if not c:
-                #crash - unclosed qoute
                 break
             if c == '"':
                 break
@@ -52,10 +50,13 @@ class CommandLineApp(object):
 
     @inlineCallbacks
     def run_script_test(self):
+        start = time.time()
         for line in self.script.split('\n'):
             if line:
                 response = yield self.decryptLine(line)
-#                print 'got response!', response
+        end = time.time()
+        duration = end - start
+        print "Duration: %.2fs" % duration
 
     def ColorIt(self, output, color):
             attr = []
@@ -69,11 +70,30 @@ class CommandLineApp(object):
     def handle_response(self, message):
         rsp = " ".join(message['response'])
         cleanResponse = rsp.lstrip('OK+CUSD: ')
-        #cleanResponse = cleanResponse.replace(self.delimiter,"\n")
         ussd_response = cleanResponse[3:-5]
         self.ussd_resp = ussd_response
-        
         return succeed(ussd_response)
+
+    def trace_mismatch(self, resp, expt):   #traces the mismatch and highlights the differences
+        output = ""
+        length = min(len(resp),len(expt))
+        breakingpoint = length
+        for i in range (0,length):
+            if resp[i] != expt[i]:
+                breakingpoint = i
+                break
+        if len(expt) < len(resp):
+            s = " (Expected string too short)"
+            s = self.ColorIt(s, "red")
+            output = expt + s
+        else:
+            newlen = 0  - (len(expt)- breakingpoint)
+            str2 = expt[newlen:]
+            str2 = self.ColorIt(str2,"red")
+            str1 = expt[:newlen]
+            output = str1 + str2
+
+        print "Expected: %s\nReceived: %s" % (output,resp)
 
     def dial(self, code):
         code = self.convert_to_ussd(code)
@@ -82,21 +102,19 @@ class CommandLineApp(object):
         return d
 
     def expect(self, code):
-        #code = code[1:-1]
+        code = code.strip()
+        self.ussd_resp = self.ussd_resp.strip()
         if code == self.ussd_resp:
             output = self.ColorIt("PASSED","green")
             print output
         else:
             output = self.ColorIt("FAILED","red")
             print output
-            print "Expected: %s\nReceived:%s" % (code,self.ussd_resp)
+            self.trace_mismatch(self.ussd_resp, code)
+            self.ussd_resp = None
 
     def send(self, code):
-        self.dial(code)
-
-    def setResponse(self, resp):
-        print "Response set to ", resp
-        self.ussd_resp = resp
+        return self.dial(code)
 
     def end(self):
         yield self.protocol.disconnect()

@@ -13,7 +13,7 @@ EXPECT "1) Balances
 SEND "1"
 EXPECT "1) Summary
 2) Detailed
-3) Promoti
+3) Promotional Should not be here
 "
 SEND "1"
 EXPECT "Airtime is R37.71; data is 0.00 MB;  0 SMS's; 0 MMS's
