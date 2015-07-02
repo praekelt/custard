@@ -16,6 +16,6 @@ EXPECT "1) Summary
 3) Promotional
 "
 SEND "1"
-EXPECT "Airtime is R37.71; data is 0.00 MB;  0 SMS's; 0 MMS's
+EXPECT "Airtime is R\d+.\d\d data is 0.00 MB;  0 SMS's; 0 MMS's
 Try the New Vodacom APP, reply 1 for details via SMS "
 END

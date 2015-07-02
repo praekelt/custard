@@ -1,6 +1,6 @@
 from twisted.python import log
 from twisted.internet.defer import inlineCallbacks, succeed
-import parsley, time
+import parsley, time, re
 
 
 class CommandLineApp(object):
@@ -104,7 +104,7 @@ class CommandLineApp(object):
     def expect(self, code):
         code = code.strip()
         self.ussd_resp = self.ussd_resp.strip()
-        if code == self.ussd_resp:
+        if  self.match(self.ussd_resp, code):
             output = self.ColorIt("PASSED","green")
             print output
         else:
@@ -112,6 +112,26 @@ class CommandLineApp(object):
             print output
             self.trace_mismatch(self.ussd_resp, code)
             self.ussd_resp = None
+    
+    def match(self, resp, expt):
+            resp_list = resp.split(" ")
+            expt_list = expt.split(" ")
+            length = min(len(resp_list),len(expt_list))
+            if len(resp_list) != len(expt_list):
+                return False
+            for i in range (0,length):
+                word_resp = resp_list[i]
+                word_expt = expt_list[i]
+                if word_expt != word_resp:
+                    match  = None
+                    pattern = word_expt+"?;$"
+                    try:
+                        match = re.match(pattern,word_resp)
+                    except:
+                        print "%s does not match %s. Failed to compile %s as a regex." % (word_expt, word_resp, word_expt)
+                    if match == None:
+                        return False
+            return True
 
     def send(self, code):
         return self.dial(code)
