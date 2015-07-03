@@ -6,6 +6,8 @@ import parsley, time, re
 class CommandLineApp(object):
     delimiter = '\r\n'
     ussd_resp = None
+    expect_count = 0
+    passed_count = 0
 
     def __init__(self, protocol, options):
         self.protocol = protocol
@@ -56,7 +58,7 @@ class CommandLineApp(object):
                 response = yield self.decryptLine(line)
         end = time.time()
         duration = end - start
-        print "Duration: %.2fs" % duration
+        print "Duration: %.2fs\n[%d/%d] Passed" % (duration, self.passed_count, self.expect_count)
 
     def ColorIt(self, output, color):
             attr = []
@@ -102,9 +104,11 @@ class CommandLineApp(object):
         return d
 
     def expect(self, code):
+        self.expect_count += 1 
         code = code.strip()
         self.ussd_resp = self.ussd_resp.strip()
         if  self.match(self.ussd_resp, code):
+            self.passed_count += 1
             output = self.ColorIt("PASSED","green")
             print output
         else:
@@ -112,7 +116,7 @@ class CommandLineApp(object):
             print output
             self.trace_mismatch(self.ussd_resp, code)
             self.ussd_resp = None
-    
+
     def match(self, resp, expt):
             resp_list = resp.split(" ")
             expt_list = expt.split(" ")
@@ -136,6 +140,7 @@ class CommandLineApp(object):
     def send(self, code):
         return self.dial(code)
 
+    @inlineCallbacks
     def end(self):
         yield self.protocol.disconnect()
 
