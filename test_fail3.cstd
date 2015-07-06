@@ -1,7 +1,7 @@
 DIAL "*111#"
 EXPECT "1) Balances\n2) Buy\n3) More Power\n4) m-pesa\n5) Promotions\n6) Talking Points\n7) Funeral Cover\n8) Airtime Advance & Transfers\n9) Services\n10) Free n Fun\n"
 SEND "1"
-EXPECT "1) Summary\n2) Detailed\n3) Promotional"
+EXPECT "1) Summary\n2) Detailed\n(should not be here)3) Promotional"
 SEND "1"
 EXPECT "Airtime is R\d+.\d\d data is 0.00 MB;  0 SMS's; 0 MMS's\nTry the New Vodacom APP, reply 1 for details via SMS "
 END

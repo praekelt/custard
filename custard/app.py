@@ -89,6 +89,23 @@ class CommandLineApp(object):
         return succeed(ussd_response)
 
     def trace_mismatch(self, resp, expt):   #traces the mismatch and highlights the differences
+        breakingpoint = self.find_and_highlight(resp,expt)
+        resp_reverse = resp[::-1]
+        expt_reverse = expt[::-1]
+        endpoint = len(expt) - self.find_and_highlight(resp_reverse,expt_reverse)
+        if len(expt) < len(resp):
+            s = " (Expected string too short)"
+            s = self.ColorIt(s, "red")
+            output = expt + s
+        else:
+            expt_part3 = expt[endpoint:]
+            expt_part2 = self.ColorIt(expt[breakingpoint:endpoint], "red")
+            expt_part1 = expt[:breakingpoint]
+            output = expt_part1+expt_part2+expt_part3
+
+        print "Expected: %s\nReceived: %s" % (output,resp)
+
+    def find_and_highlight(self, resp, expt):
         output = ""
         length = min(len(resp),len(expt))
         breakingpoint = length
@@ -96,18 +113,7 @@ class CommandLineApp(object):
             if resp[i] != expt[i]:
                 breakingpoint = i
                 break
-        if len(expt) < len(resp):
-            s = " (Expected string too short)"
-            s = self.ColorIt(s, "red")
-            output = expt + s
-        else:
-            newlen = 0  - (len(expt)- breakingpoint)
-            str2 = expt[newlen:]
-            str2 = self.ColorIt(str2,"red")
-            str1 = expt[:newlen]
-            output = str1 + str2
-
-        print "Expected: %s\nReceived: %s" % (output,resp)
+        return breakingpoint
 
     def dial(self, code):
         code = self.convert_to_ussd(code)
