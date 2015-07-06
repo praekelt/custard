@@ -8,7 +8,7 @@ class CommandLineApp(object):
     ussd_resp = None
     expect_count = 0
     passed_count = 0
-
+    run = True
     def __init__(self, protocol, options):
         self.protocol = protocol
         self.protocol.verbose = options['verbose']
@@ -16,6 +16,11 @@ class CommandLineApp(object):
 
     def load_script(self, options):
         self.script = ""
+        filename = options['script']
+        if filename[-4:] != 'cstd':
+            print "Error: File has to have a cstd extension."
+            self.run = False
+
         with open(options['script'], 'r') as fp:
             while True:
                 c = fp.read(1)
@@ -38,13 +43,20 @@ class CommandLineApp(object):
                 break
             elif c == '\n':
                 c = ' ';
+            elif c == '\\':
+                c = fp.read(1)
+                if c == 'n':
+                    c = " " 
+                else:
+                    c = '\\' + c
             quote += c
         return quote
 
 
     def on_modem_ready(self, configure_response):
-        log.msg('Modem is ready!', configure_response)
-        return self.run_script_test()
+        if self.run:
+            log.msg('Modem is ready!', configure_response)
+            return self.run_script_test()
 
     def convert_to_ussd(self, code):
         message = "AT+CUSD=1,%s,15" % (code,)
