@@ -3,7 +3,7 @@ import sys
 from twisted.internet.task import react
 from twisted.internet import reactor
 from twisted.internet.endpoints import clientFromString
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, Deferred, succeed
 from twisted.python import usage, log
 
 from custard.protocol import CustardClientFactory
@@ -19,7 +19,11 @@ def play(options):
     app = CommandLineApp(protocol, options)
     protocol.ready.addCallback(app.on_modem_ready)
     yield protocol.ready
-
+    flag = app.reset_flag()
+    if flag:
+        app2 = CommandLineApp(protocol, options)
+        protocol.ready.addCallback(app2.on_modem_ready)
+        yield protocol.ready
 
 class Play(usage.Options):
 

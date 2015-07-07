@@ -9,6 +9,7 @@ class CommandLineApp(object):
     expect_count = 0
     passed_count = 0
     run = True
+    reset = False
     def __init__(self, protocol, options):
         self.protocol = protocol
         self.protocol.verbose = options['verbose']
@@ -52,7 +53,6 @@ class CommandLineApp(object):
             quote += c
         return quote
 
-
     def on_modem_ready(self, configure_response):
         if self.run:
             log.msg('Modem is ready!', configure_response)
@@ -68,6 +68,8 @@ class CommandLineApp(object):
         for line in self.script.split('\n'):
             if line:
                 response = yield self.decryptLine(line)
+                if self.reset == True:
+                    return
         end = time.time()
         duration = end - start
         print "Duration: %.2fs\n[%d/%d] Passed" % (duration, self.passed_count, self.expect_count)
@@ -80,6 +82,9 @@ class CommandLineApp(object):
                 attr.append('32')
             attr.append('1')
             return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), output)
+
+    def reset_flag(self):
+        return self.reset
 
     def handle_response(self, message):
         rsp = " ".join(message['response'])
@@ -122,6 +127,10 @@ class CommandLineApp(object):
         return d
 
     def expect(self, code):
+        if self.expect_count == 0 and self.ussd_resp.strip() == "You have chosen an incorrect option.":
+            self.reset = True
+            print "Overlapped USSD session. Attempting to reconnect..."
+            return
         self.expect_count += 1 
         code = code.strip()
         self.ussd_resp = self.ussd_resp.strip()
