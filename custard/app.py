@@ -1,6 +1,8 @@
 from twisted.python import log
 from twisted.internet.defer import inlineCallbacks, succeed
-import parsley, time, re
+from twisted.internet import reactor
+#from eventlet.timeout import Timeout
+import parsley, time, re, sys
 
 
 class CommandLineApp(object):
@@ -19,7 +21,7 @@ class CommandLineApp(object):
         self.script = ""
         filename = options['script']
         if filename[-4:] != 'cstd':
-            print "Error: File has to have a cstd extension."
+            raise ValueError("Incorrect file format. The file %s is not a cstd file." % filename)
             self.run = False
 
         with open(options['script'], 'r') as fp:
@@ -120,13 +122,21 @@ class CommandLineApp(object):
                 break
         return breakingpoint
 
+    def timeouts(self, code):
+        self.deferred.cancel() 
+        self.end()
+        sys.exit("Tried dialing %s. Got no response after 20s. Test failed." % code)
+
     def dial(self, code):
         code = self.convert_to_ussd(code)
+        self.timeout = reactor.callLater(20, self.timeouts, code)
         d = self.protocol.send_command(code, expect='+CUSD')
         d.addCallback(self.handle_response)
+        self.deferred = d
         return d
 
     def expect(self, code):
+        self.timeout.cancel()
         if self.expect_count == 0 and self.ussd_resp.strip() == "You have chosen an incorrect option.":
             self.reset = True
             print "Overlapped USSD session. Attempting to reconnect..."
@@ -155,7 +165,7 @@ class CommandLineApp(object):
                 word_expt = expt_list[i]
                 if word_expt != word_resp:
                     match  = None
-                    pattern = word_expt+"?;$"
+                    pattern = word_expt+"$"
                     try:
                         match = re.match(pattern,word_resp)
                     except:
@@ -195,4 +205,4 @@ class CommandLineApp(object):
         elif instr == "end":
             return self.end()
         else:
-            print "Unknown instruction: ", instr
+            raise SyntaxError("Unknown instruction:%s" % instr)

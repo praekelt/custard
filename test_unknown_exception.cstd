@@ -4,4 +4,5 @@ SEND "1"
 EXPECT "1) Summary\n2) Detailed\n(should not be here)3) Promotional"
 SEND "1"
 EXPECT "Airtime is R\d+.\d\d; data is 0.00 MB;  0 SMS's; 0 MMS's\nTry the New Vodacom APP, reply 1 for details via SMS "
+sklvm
 END
