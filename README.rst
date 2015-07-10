@@ -24,3 +24,7 @@ API
 	EXPECT "string expected to come back"	- testing utility, checks the given string against the received string
 	SEND "response string after expect"		- dials number as a response
 	END 									- ends test
+
+running custard
+==============
+	custard play -e TCP:servername:portnumber -s script_to_be_tested.cstd
